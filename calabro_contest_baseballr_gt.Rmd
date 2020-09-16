@@ -3,6 +3,7 @@ title: "Displaying baseballR Data with a gt Table"
 author: "Michael Calabro"
 date: "9/15/2020"
 output: html_document
+runtime : shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -16,95 +17,109 @@ library(janitor)
 library(forestmangr)
 library(gt)
 library(reactable)
+library(shiny)
 
 source("data_collection_functions.R")
 ```
 
-```{r}
-data <- get_table_data("Bryce Harper")
+```{r, fig.align='center'}
+inputPanel(
+  textInput(inputId = "player_name", 
+            label = "Select MLB Batter to View:",
+            placeholder = "ex: bryce harper"),
+  actionButton(inputId = "select_player",
+               label = "Select!",
+               icon = icon("baseball-ball"))
+)
 ```
 
 ```{r}
-data %>%
-  gt(
-    rowname_col = "game_year"
+data <- eventReactive(input$select_player, {
+  get_table_data(input$player_name)
+}) 
+
+player_name <- eventReactive(input$select_player, {
+  str_to_title(input$player_name)
+}) 
+```
+
+```{r}
+render_gt({
+  data() %>%
+    gt(
+      rowname_col = "game_year"
+      ) %>%
+    tab_header(
+      title = md(glue::glue("**{player_name()}** ***Batted-Balls Statistics***  **Compared to Expected Values**"))
+      ) %>%
+    tab_source_note(
+      md("`Data Source: MLB.com`")
+      ) %>%
+    tab_spanner(
+      label = "On-Base Percentage",
+      columns = vars("ba", "expected_ba", "ba_above_expected")
+      ) %>%
+    tab_spanner(
+      label = "Weighted On-Base Average",
+      columns = vars("woba", "expected_woba", "woba_above_expected")
+      ) %>%
+    cols_align(
+      align = "center"
+      ) %>%
+    cols_width(
+      ends_with("ba") ~ px(100),
+      ends_with("ed") ~ px(120)
     ) %>%
-  tab_header(
-    title = md("**Bryce Harper** ***Batted-Balls Statistics***  **Compared to Expected Values**")
+    data_color(
+      columns = c("ba_above_expected", "woba_above_expected"),
+      colors = scales::col_numeric(
+        palette = c("blue", "white", "red"),
+        domain = c(-0.14, 0.14)
+        )        
+      ) %>%
+    opt_row_striping(
+      row_striping  = FALSE
     ) %>%
-  tab_spanner(
-    label = "On-Base Percentage",
-    columns = vars("ba", "expected_ba", "ba_above_expected")
+    tab_stubhead(
+      label = md("**Season**")
+      ) %>%
+    tab_options(
+      stub.font.weight = "bold"
     ) %>%
-  tab_spanner(
-    label = "Weighted On-Base Average",
-    columns = vars("woba", "expected_woba", "woba_above_expected")
+    cols_label(
+      ba = "OBP",
+      expected_ba = "Expected OBP",
+      ba_above_expected = md("**OBP Above Expected**"),
+      woba = "wOBA",
+      expected_woba = "Expected wOBA",
+      woba_above_expected = md("**wOBA Above Expected**")
     ) %>%
-  cols_align(
-    align = "center"
-    ) %>%
-  cols_width(
-    ends_with("ba") ~ px(100),
-    ends_with("ed") ~ px(120)
-  ) %>%
-  data_color(
-    columns = c("ba_above_expected", "woba_above_expected"),
-    colors = scales::col_numeric(
-      palette = c("blue", "white", "red"),
-      domain = c(-0.1, 0.1)
-      )        
-    ) %>%
-  opt_row_striping(
-    row_striping = FALSE
-  ) %>%
-  tab_stubhead(
-    label = md("**Season**")
-    ) %>%
-  summary_rows(
-    columns = c("ba_above_expected", "woba_above_expected"),
-    fns = list(
-      "Career" = ~mean(.)
-    ),
-    missing_text = " ",
-    formatter = fmt_number,
-    decimals = 3
-  ) %>%
-  tab_options(
-    stub.font.weight = "bold"
-  ) %>%
-  cols_label(
-    ba = "OBP",
-    expected_ba = "Expected OBP",
-    ba_above_expected = md("**OBP Above Expected**"),
-    woba = "wOBA",
-    expected_woba = "Expected wOBA",
-    woba_above_expected = md("**wOBA Above Expected**")
-  ) %>%
-  tab_style(
-    style = cell_borders(
-      sides = c("left"),
-      color = "#gray",
-      weight = px(2.5),
-      style = "solid"
-    ),
-    locations = list(
-      cells_body(
-      columns = vars("woba"),
-      rows = everything()
-      )
-    )
-  ) %>%
-  tab_style(
-    style = list(
-      cell_fill(
-        color = "gray",
-        alpha = 0.2
+    tab_style(
+      style = cell_borders(
+        sides = c("left"),
+        color = "#gray",
+        weight = px(2.5),
+        style = "solid"
+      ),
+      locations = list(
+        cells_body(
+        columns = vars("woba"),
+        rows = everything()
         )
-    ),
-    locations = cells_column_labels(
-      columns = vars("ba_above_expected", "woba_above_expected")
-    )
-  )
+      )
+    ) %>%
+    tab_style(
+      style = list(
+        cell_fill(
+          color = "gray",
+          alpha = 0.2
+          )
+      ),
+      locations = cells_column_labels(
+        columns = vars("ba_above_expected", "woba_above_expected")
+      )
+    ) 
+})
 ```
 
 
