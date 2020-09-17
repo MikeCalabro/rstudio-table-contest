@@ -23,14 +23,13 @@ source("data_collection_functions.R")
 ```
 
 ```{r, fig.align='center'}
-inputPanel(
   textInput(inputId = "player_name", 
             label = "Select MLB Batter to View:",
-            placeholder = "ex: bryce harper"),
+            placeholder = "ex: Bryce Harper",
+            width = "20%")
   actionButton(inputId = "select_player",
                label = "Select!",
                icon = icon("baseball-ball"))
-)
 ```
 
 ```{r}
