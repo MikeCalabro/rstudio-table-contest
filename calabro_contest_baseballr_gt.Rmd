@@ -1,10 +1,24 @@
 ---
-title: "Displaying baseballR Data with a gt Table"
-author: "Michael Calabro"
-date: "9/15/2020"
+title: "Visualizing Batters' Luck Using MLB Statcast Data"
 output: html_document
 runtime : shiny
 ---
+
+<style type="text/css">
+
+h1.title {
+  font-size: 30px;
+  text-align: center;
+}
+h4.author {
+  text-align: center;
+}
+h4.date {
+  text-align: center;
+}
+</style>
+
+<br>  
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
@@ -22,25 +36,41 @@ library(shiny)
 source("data_collection_functions.R")
 ```
 
-```{r, fig.align='center'}
-  textInput(inputId = "player_name", 
-            label = "Select MLB Batter to View:",
-            placeholder = "ex: Bryce Harper",
-            width = "20%")
+<center>
+```{r}
+
+  HTML(
+      '<div class="form-group shiny-input-container">
+        <label for="text">Select MLB Batter To View:</label>
+        <input 
+          id="player_name" 
+          type="text" 
+          style="width: 160px; text-align: center" 
+          class="form-control" 
+          value="" 
+          placeholder="ex: Bryce Harper"/>
+        </div>'
+    )
   actionButton(inputId = "select_player",
                label = "Select!",
                icon = icon("baseball-ball"))
 ```
+</center>
 
 ```{r}
 data <- eventReactive(input$select_player, {
-  get_table_data(input$player_name)
+  withProgress(
+  get_table_data(input$player_name),
+  message = "Data Takes 10 Seconds To Load",
+  detail = "Patience will be rewarded with beauty",
+  value = 0.93)
 }) 
 
 player_name <- eventReactive(input$select_player, {
   str_to_title(input$player_name)
 }) 
 ```
+<br>
 
 ```{r}
 render_gt({
@@ -49,13 +79,24 @@ render_gt({
       rowname_col = "game_year"
       ) %>%
     tab_header(
-      title = md(glue::glue("**{player_name()}** ***Batted-Balls Statistics***  **Compared to Expected Values**"))
+      title = md(glue::glue("**{player_name()}'s** ***Batted-Ball Statistics***  **Compared to Expected Values**"))
       ) %>%
     tab_source_note(
-      md("`Data Source: MLB.com`")
+      md(" Data Source: [MLB.com](https://baseballsavant.mlb.com/statcast_search)")
       ) %>%
+    tab_footnote(
+      footnote = "Only includes at-bats where the ball was hit in play, not including sacrifice hits.",
+      locations = cells_title()
+    ) %>%
+    tab_footnote(
+      footnote = md("Expected values are calculated using a batted ball's launch speed and launch angle. 
+      [Learn more here!](https://baseballsavant.mlb.com/leaderboard/expected_statistics)"),
+      locations = cells_column_labels(
+        columns = vars("expected_ba", "expected_woba")
+      )
+    ) %>%
     tab_spanner(
-      label = "On-Base Percentage",
+      label = "Batting Average",
       columns = vars("ba", "expected_ba", "ba_above_expected")
       ) %>%
     tab_spanner(
@@ -86,9 +127,9 @@ render_gt({
       stub.font.weight = "bold"
     ) %>%
     cols_label(
-      ba = "OBP",
-      expected_ba = "Expected OBP",
-      ba_above_expected = md("**OBP Above Expected**"),
+      ba = "AVG",
+      expected_ba = "Expected AVG",
+      ba_above_expected = md("**AVG Above Expected**"),
       woba = "wOBA",
       expected_woba = "Expected wOBA",
       woba_above_expected = md("**wOBA Above Expected**")
@@ -117,7 +158,16 @@ render_gt({
       locations = cells_column_labels(
         columns = vars("ba_above_expected", "woba_above_expected")
       )
-    ) 
+    )
+  
+    # %>%
+    # summary_rows(
+    #   columns = vars("ba_above_expected", "woba_above_expected"),
+    #   fns = list(
+    #     " " = ~mean(.)
+    #   ),
+    #   missing_text = " "
+    # )
 })
 ```
 
